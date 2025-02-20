@@ -6,9 +6,9 @@ public class Spawner : MonoBehaviour
 {
     [SerializeField] private Cube _cube;
 
-    private float _repeatRate = .1f;
-    private int _poolCapacity = 100;
-    private int _poolMaxSize = 100;
+    private readonly float _repeatRate = .1f;
+    private readonly int _poolCapacity = 100;
+    private readonly int _poolMaxSize = 100;
 
     private ObjectPool<Cube> _pool;
 
@@ -30,38 +30,28 @@ public class Spawner : MonoBehaviour
         int higth = 20;
 
         cube.transform.position = new Vector3(Random.Range(-width, width + 1), higth, Random.Range(-width, width + 1));
+        cube.Rigidbody.velocity = Vector3.zero;
         cube.gameObject.SetActive(true);
-        cube.Renderer.material.color = Color.white;
-        cube.Bang += OnCollisionContact;
+        cube.Collided += OnCollisionContact;
     }
 
     private void Start()
     {
-        InvokeRepeating(nameof(GetCube), 0f, _repeatRate);
-    }
-
-    private void GetCube()
-    {
-        _pool.Get();
+        StartCoroutine(WaitForUse(_repeatRate));
     }
 
     private void OnCollisionContact(Cube cube)
     {
-        float minDelay = 2;
-        float maxDelay = 5;
-
-        cube.Bang -= OnCollisionContact;
-
-        StartCoroutine(WaitForSeconds(Random.Range(minDelay, maxDelay), cube));
+        cube.Collided -= OnCollisionContact;
+        _pool.Release(cube);
     }
 
-    IEnumerator WaitForSeconds(float seconds, Cube cube)
+    private IEnumerator WaitForUse(float seconds)
     {
-        cube.Renderer.material.color = Random.ColorHSV();
-
-        yield return new WaitForSeconds(seconds);
-
-        if (cube.gameObject.activeSelf)
-            _pool.Release(cube);
+        while (true)
+        {
+            yield return new WaitForSeconds(seconds);
+            _pool.Get();
+        }
     }
 }

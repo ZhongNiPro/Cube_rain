@@ -1,15 +1,16 @@
 using System;
+using System.Collections;
 using UnityEngine;
 
 public class Cube : MonoBehaviour
 {
     private Renderer _renderer;
     private Rigidbody _rigidbody;
+    private bool _haveContact = false;
 
-    public Renderer Renderer => _renderer;
+    public event Action<Cube> Collided;
+
     public Rigidbody Rigidbody => _rigidbody;
-
-    public event Action<Cube> Bang;
 
     private void Awake()
     {
@@ -19,17 +20,36 @@ public class Cube : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
-        bool haveContact = false;
-
         foreach (ContactPoint contact in collision.contacts)
         {
             Surface surface = contact.otherCollider.GetComponent<Surface>();
 
-            if (surface != null && haveContact == false)
+            if (surface != null && _haveContact == false)
             {
-                Bang?.Invoke(this);
-                haveContact = true;
+                OnCollisionContact();
+                _haveContact = true;
             }
         }
+    }
+
+    private void OnCollisionContact()
+    {
+        float minDelay = 2;
+        float maxDelay = 5;
+
+        StartCoroutine(WaitForRelease(UnityEngine.Random.Range(minDelay, maxDelay)));
+    }
+
+    private IEnumerator WaitForRelease(float seconds)
+    {
+        _renderer.material.color = UnityEngine.Random.ColorHSV();
+
+        yield return new WaitForSeconds(seconds);
+
+        if (gameObject.activeSelf)
+            Collided?.Invoke(this);
+
+        _renderer.material.color = Color.white;
+        _haveContact = false;
     }
 }
